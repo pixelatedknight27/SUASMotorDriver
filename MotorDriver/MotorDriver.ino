@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <RH_NRF24.h>
 #include <L298N.h>
-
+ 
 // Singleton instance of the radio driver
 #define CE_PIN 7
 #define CSN_PIN 8
@@ -18,8 +18,8 @@ L298N myMotors[5] = {
 
 void setup() {
   // put your setup code here, to run once:
-  for(L298N driver : myMotors){
-    driver.stop();
+  for(L298N motor : myMotors){
+    motor.stop();
   }
 
   Serial.begin(9600);
@@ -48,13 +48,23 @@ void setup() {
   }
 }
 
+void getMotorAction(L298N motor){
+  if(motor.isMoving()){
+    motor.stop();
+  }
+  else{
+    motor.forward();
+  }
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
-  if (nrf24.available())
-  {
+  if (nrf24.available()){
+
     // Should be a message for us now
     uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
+
     Serial.println("we are live");
 
     if (nrf24.recv(buf, &len)){
@@ -62,27 +72,17 @@ void loop() {
       String msg = (char*)buf;
 
       Serial.print("Got request: " + msg);
-      Serial.println((char*)buf);
 
-      switch((int)msg[6]){
-        case 1:
-          myMotors[0].forward();
-          break;
-        case 2:
-          myMotors[1].forward();
-          break;
-        case 3:
-          myMotors[2].forward();
-          break;
-        case 4:
-          myMotors[3].forward();
-          break;
-        case 5:
-          myMotors[4].forward();
-          break;
-        default:
-          Serial.println("Invalid command");
-          break;
+      // if the substring "Button" is found in the message
+      if(msg.find("Button")){
+        // look at 7th position of message - this is the motor number to activate.
+        // i.e. Button4
+        //            ^
+        // activate the motor at position 3 in the list (starting from 0)
+        getMotorAction(myMotors[(int)msg[6]-1]);
+      }
+      else{
+        Serial.println("invalid command");
       }
     }
     else

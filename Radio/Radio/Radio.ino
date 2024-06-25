@@ -40,8 +40,7 @@ void setup()
    
   Serial.begin(9600);
   Serial.println("Starting");
-  while (!Serial) 
-    ; // wait for serial port to connect. Needed for Leonardo only
+  while (!Serial); // wait for serial port to connect. Needed for Leonardo only
   if (!nrf24.init())
     Serial.println("init failed");
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm

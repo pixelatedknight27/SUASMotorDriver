@@ -10,9 +10,9 @@
 RH_NRF24 nrf24(CE_PIN, CSN_PIN);
 
 L298N myMotors[5] = {
-  L298N(5, 30, 31),   // driver1
-  L298N(2, 35, 36),   // driver2
-  L298N(3, 29, 30),   // driver3
+  L298N(3, 29, 28),   // driver1
+  L298N(2, 34, 35),   // driver2
+  L298N(5, 30, 31),   // driver3
   L298N(11, 32, 33),  // driver4
   L298N(13, 24, 25)   // driver5
 };

@@ -11,7 +11,7 @@ RH_NRF24 nrf24(CE_PIN, CSN_PIN);
 
 L298N myMotors[5] = {
   L298N(3, 29, 28),   // driver1
-  L298N(2, 34, 35),   // driver2
+  L298N(6, 34, 35),   // driver2 //pin 6 was 2 
   L298N(5, 30, 31),   // driver3
   L298N(11, 32, 33),  // driver4
   L298N(13, 24, 25)   // driver5
@@ -19,13 +19,15 @@ L298N myMotors[5] = {
 
 bool isRunning[] = {0,0,0,0,0};
 
-void setup() {
+void setup() 
+{
   // put your setup code here, to run once:
-  for(L298N motor : myMotors){
-    motor.forward();
-    delay(1000);
-    motor.stop();
-  }
+  // for(L298N motor : myMotors)
+  // {
+  //   motor.backward();
+  //   delay(1000);
+  //   motor.stop();
+  // }
 
   Serial.begin(9600);
   while (!Serial) ; // Wait for serial port to connect. Needed for Leonardo only
@@ -58,8 +60,9 @@ void getMotorAction(L298N motor, int motorNum){
     motor.stop();
     isRunning[motorNum] = 0;
   }
-  else{
-    motor.forward();
+  else
+  {
+    motor.backward();
     isRunning[motorNum] = 1;
   }
 }

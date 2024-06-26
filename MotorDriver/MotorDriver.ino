@@ -2,107 +2,96 @@
 #include <RH_NRF24.h>
 #include <L298N.h>
 #include <String.h>
- 
+
 // Singleton instance of the radio driver
 #define CE_PIN 7
 #define CSN_PIN 8
-
 RH_NRF24 nrf24(CE_PIN, CSN_PIN);
 
 L298N myMotors[5] = {
-  L298N(3, 29, 28),   // driver1
-  L298N(2, 34, 35),   // driver2
-  L298N(5, 30, 31),   // driver3
-  L298N(11, 32, 33),  // driver4
-  L298N(13, 24, 25)   // driver5
+    L298N(3, 29, 28),   // driver1
+    L298N(2, 34, 35),   // driver2
+    L298N(5, 30, 31),   // driver3
+    L298N(11, 32, 33),  // driver4
+    L298N(13, 24, 25)   // driver5
 };
 
-bool isRunning[] = {0,0,0,0,0};
+bool isRunning[] = {false, false, false, false, false};
 
 void setup() {
-  // put your setup code here, to run once:
-  for(L298N motor : myMotors){
-    motor.forward();
-    delay(1000);
-    motor.stop();
-  }
+    Serial.begin(9600);
+    while (!Serial) ; // Wait for serial port to connect. Needed for Leonardo only
 
-  Serial.begin(9600);
-  while (!Serial) ; // Wait for serial port to connect. Needed for Leonardo only
-  
-  if(!nrf24.init()){
-    Serial.println("init failed");
-  } 
-  else{
-    Serial.println("nice");
-  }
+    for (L298N &motor : myMotors) {
+        motor.stop();
+    }
+
+    if (!nrf24.init()) {
+        Serial.println("init failed");
+    } else {
+        Serial.println("nice");
+    }
     
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  if (!nrf24.setChannel(1)){
-    Serial.println("setChannel failed");
-  } 
-  else{
-    Serial.println("okay");
-  }
+    if (!nrf24.setChannel(1)) {
+        Serial.println("setChannel failed");
+    } else {
+        Serial.println("okay");
+    }
     
-  if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm)) { 
-    Serial.println("setRF failed");
-  }
-  else{ 
-    Serial.println("perfect");
-  }
+    if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm)) {
+        Serial.println("setRF failed");
+    } else {
+        Serial.println("perfect");
+    }
 }
 
-void getMotorAction(L298N motor, int motorNum){
-  if(isRunning[motorNum]){
-    motor.stop();
-    isRunning[motorNum] = 0;
-  }
-  else{
-    motor.forward();
-    isRunning[motorNum] = 1;
-  }
+void getMotorAction(L298N &motor, int motorNum) {
+    if (isRunning[motorNum]) {
+        motor.stop();
+        isRunning[motorNum] = false;
+    } else {
+        motor.forward();
+        isRunning[motorNum] = true;
+    }
+}
+
+void sendConfirmation(const char* confirmationMessage) {
+    if (!nrf24.send((uint8_t*)confirmationMessage, strlen(confirmationMessage))) {
+        Serial.println("Confirmation send failed");
+    }
+    nrf24.waitPacketSent();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  if (nrf24.available()){
+    if (nrf24.available()) {
+        uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buf);
 
-    // Should be a message for us now
-    uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
+        if (nrf24.recv(buf, &len)) {
+            String msg = (char*)buf;
+            Serial.print("Got request: ");
+            Serial.println(msg);
 
-    Serial.println("we are live");
-
-    if (nrf24.recv(buf, &len)){
-
-      String msg = (char*)buf;
-
-      Serial.print("Got request: " + msg);
-
-      // if the substring "Button" is found in the message
-      if(msg == "Button1"){
-        getMotorAction(myMotors[0],0);
-      }
-      else if(msg == "Button2"){
-        getMotorAction(myMotors[1],1);
-      }
-      else if(msg == "Button3"){
-        getMotorAction(myMotors[2],2);
-      }
-      else if(msg == "Button4"){
-        getMotorAction(myMotors[3],3);
-      }
-      else if(msg == "Button5"){
-        getMotorAction(myMotors[4],4);
-      }
-      else{
-        Serial.println("invalid command");
-      }
+            if (msg == "Button1") {
+                getMotorAction(myMotors[0], 0);
+                sendConfirmation("Button1_OK");
+            } else if (msg == "Button2") {
+                getMotorAction(myMotors[1], 1);
+                sendConfirmation("Button2_OK");
+            } else if (msg == "Button3") {
+                getMotorAction(myMotors[2], 2);
+                sendConfirmation("Button3_OK");
+            } else if (msg == "Button4") {
+                getMotorAction(myMotors[3], 3);
+                sendConfirmation("Button4_OK");
+            } else if (msg == "Button5") {
+                getMotorAction(myMotors[4], 4);
+                sendConfirmation("Button5_OK");
+            } else {
+                Serial.println("Invalid command");
+            }
+        } else {
+            Serial.println("Receive failed");
+        }
     }
-    else
-    {
-      Serial.println("recv failed");
-    }
-  }
 }

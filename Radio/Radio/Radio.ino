@@ -1,3 +1,5 @@
+#include <RadioHead.h>
+
 // Transmitter 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -32,67 +34,57 @@ void setup()
   pinMode(buttonPin4, INPUT_PULLUP);
   pinMode(buttonPin5, INPUT_PULLUP);
 
-  buttonState1 = digitalRead(buttonPin1);
-  buttonState2 = digitalRead(buttonPin2);
-  buttonState3 = digitalRead(buttonPin3);
-  buttonState4 = digitalRead(buttonPin4);
-  buttonState5 = digitalRead(buttonPin5);
-   
-  Serial.begin(9600);
-  Serial.println("Starting");
-  while (!Serial); // wait for serial port to connect. Needed for Leonardo only
-  if (!nrf24.init())
-    Serial.println("init failed");
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  if (!nrf24.setChannel(1))
-    Serial.println("setChannel failed");
-  if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm))
-    Serial.println("setRF failed");
-}
- 
- 
- void loop() {
-  // Read the state of the button
-  int currentButtonState1 = digitalRead(buttonPin1);
-  int currentButtonState2 = digitalRead(buttonPin2);
-  int currentButtonState3 = digitalRead(buttonPin3);
-  int currentButtonState4 = digitalRead(buttonPin4);
-  int currentButtonState5 = digitalRead(buttonPin5);
+ Serial.begin(9600);
+  while (!Serial) ; // Wait for serial port to connect. Needed for Leonardo only
 
-  // Check if each button is pressed (assuming they are active low)
-  if (currentButtonState1 == LOW && buttonState1 != LOW) {
-    Serial.println("Button 1 Pressed");
-    uint8_t data[] = "Button1";
-    nrf24.send(data, sizeof(data));
-  }
-  if (currentButtonState2 == LOW && buttonState2 != LOW) {
-    Serial.println("Button 2 Pressed");
-    uint8_t data[] = "Button2";
-    nrf24.send(data, sizeof(data));
-  }
-  if (currentButtonState3 == LOW && buttonState3 != LOW) {
-    Serial.println("Button 3 Pressed");
-    uint8_t data[] = "Button3";
-    nrf24.send(data, sizeof(data));
-  }
-  if (currentButtonState4 == LOW && buttonState4 != LOW) {
-    Serial.println("Button 4 Pressed");
-    uint8_t data[] = "Button4";
-    nrf24.send(data, sizeof(data));
-  }
-  if (currentButtonState5 == LOW && buttonState5 != LOW) {
-    Serial.println("Button 5 Pressed");
-    uint8_t data[] = "Button5";
-    nrf24.send(data, sizeof(data));
+  if (!nrf24.init()) {
+    Serial.println("init failed");
   }
   
-  // Update button states for the next iteration
-  buttonState1 = currentButtonState1;
-  buttonState2 = currentButtonState2;
-  buttonState3 = currentButtonState3;
-  buttonState4 = currentButtonState4;
-  buttonState5 = currentButtonState5;
+  if (!nrf24.setChannel(1)) {
+    Serial.println("setChannel failed");
+  }
+  
+  if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm)) {
+    Serial.println("setRF failed");
+  }
+}
 
-  // Delay to debounce the buttons
-  delay(50);
+void loop() {
+  checkButtonPress(buttonPin1, "Button1", &buttonState1);
+  checkButtonPress(buttonPin2, "Button2", &buttonState2);
+  checkButtonPress(buttonPin3, "Button3", &buttonState3);
+  checkButtonPress(buttonPin4, "Button4", &buttonState4);
+  checkButtonPress(buttonPin5, "Button5", &buttonState5);
+
+  delay(50); // Debounce delay
+}
+
+void checkButtonPress(int buttonPin, const char* buttonName, int* lastState) {
+  int currentState = digitalRead(buttonPin);
+  if (currentState == LOW && *lastState != LOW) {
+    Serial.print(buttonName);
+    Serial.println(" Pressed");
+    uint8_t data[20];
+    strcpy((char*)data, buttonName);
+    nrf24.send(data, strlen((char*)data));
+    nrf24.waitPacketSent();
+
+    // Now wait for the confirmation
+    uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    unsigned long startTime = millis();
+    while (millis() - startTime < 1000) {  // wait for up to 1000 ms for the confirmation
+      if (nrf24.available()) {
+        if (nrf24.recv(buf, &len)) {
+          String confirmation = (char*)buf;
+          if (confirmation == String(buttonName) + "_OK") {
+            Serial.println("Confirmation received");
+            break;
+          }
+        }
+      }
+    }
+  }
+  *lastState = currentState;
 }

@@ -53,6 +53,10 @@ void setup()
   else{ 
     Serial.println("perfect");
   }
+  for(L298N motor : myMotors)
+  {
+    motor.backward();
+  }
 }
 
 void getMotorAction(L298N motor, int motorNum){
@@ -62,7 +66,7 @@ void getMotorAction(L298N motor, int motorNum){
   }
   else
   {
-    motor.backward();
+    motor.forward();
     isRunning[motorNum] = 1;
   }
 }
